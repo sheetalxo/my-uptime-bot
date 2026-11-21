@@ -23,7 +23,7 @@ const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const api=(m,u,b)=>fetch(u,{method:m,headers:{'Content-Type':'application/json'},body:b?JSON.stringify(b):undefined});
 function show(a){$('#login').hidden=a;$('#app').hidden=!a}
-async function load(){const r=await api('GET','/api/sites');if(r.status===401)return show(false);show(true);render((await r.json()).sites)}
+async function load(){try{const r=await api('GET','/api/sites');if(r.status===200){const d=await r.json();show(true);return render(d.sites)}show(false);$('#le').textContent=r.status===401?'':'Server problem (code '+r.status+'). Setup check karo.'}catch(x){show(false);$('#le').textContent='Server problem. Setup check karo.'}}
 function render(sites){
   $('#list').innerHTML=sites.map(s=>{const h=s.hist||[],up=h.filter(x=>x.up).length,pct=h.length?(up/h.length*100).toFixed(1):'–',
   avg=h.length?Math.round(h.reduce((a,x)=>a+x.ms,0)/h.length):'–',cls=s.paused?'':s.up===undefined?'':s.up?'up':'down';
@@ -31,10 +31,10 @@ function render(sites){
   <div class="row"><button data-p="${s.id}" data-v="${!s.paused}">${s.paused?'Resume':'Pause'}</button><button data-d="${s.id}">Delete</button></div></div>
   <div class="row m" style="margin-top:8px">Ping every <input type="number" min="1" max="60" value="${s.interval||5}" data-i="${s.id}" style="flex:none;min-width:0;width:64px;padding:4px 8px"> min · Uptime ${pct}% · Avg ${avg} ms · Last ${s.last?new Date(s.last).toLocaleTimeString():'–'}</div>
   <div class="bars">${h.slice(-50).map(x=>`<i class="${x.up?'':'d'}" title="${x.ms}ms"></i>`).join('')}</div></div>`}).join('')}
-$('#lf').onsubmit=async e=>{e.preventDefault();$('#le').textContent='';try{const r=await api('POST','/api/login',{password:$('#pw').value});if(r.ok){$('#pw').value='';load()}else $('#le').textContent=(await r.json()).error||'Error '+r.status}catch(x){$('#le').textContent='Network error'}};
+$('#lf').onsubmit=async e=>{e.preventDefault();$('#le').textContent='';try{const r=await api('POST','/api/login',{password:$('#pw').value});if(r.ok){$('#pw').value='';load()}else{let m;try{m=(await r.json()).error}catch(x){}$('#le').textContent=m||'Server error '+r.status}}catch(x){$('#le').textContent='Network error'}};
 $('#lo').onclick=async()=>{await api('DELETE','/api/login');location.reload()};
 $('#list').onchange=async e=>{const i=e.target.dataset.i;if(!i)return;const r=await api('PATCH','/api/sites',{id:i,interval:e.target.value});if(r.ok)render((await r.json()).sites)};
-$('#add').onclick=async()=>{const r=await api('POST','/api/sites',{name:$('#n').value,url:$('#u').value,interval:$('#iv').value});if(r.ok){$('#n').value=$('#u').value='';render((await r.json()).sites)}else alert((await r.json()).error)};
+$('#add').onclick=async()=>{const r=await api('POST','/api/sites',{name:$('#n').value,url:$('#u').value,interval:$('#iv').value});if(r.ok){$('#n').value=$('#u').value='';render((await r.json()).sites)}else{let m;try{m=(await r.json()).error}catch(x){}alert(m||'Error '+r.status)}};
 $('#ck').onclick=async e=>{e.target.textContent='Checking…';const r=await api('POST','/api/sites',{action:'check'});e.target.textContent='Check now';if(r.ok)render((await r.json()).sites)};
 $('#list').onclick=async e=>{const d=e.target.dataset;let r;
   if(d.d&&confirm('Delete?'))r=await api('DELETE','/api/sites',{id:d.d});else if(d.p)r=await api('PATCH','/api/sites',{id:d.p,paused:d.v==='true'});
