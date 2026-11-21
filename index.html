@@ -1,0 +1,43 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>My Uptime</title>
+<style>
+:root{--bg:#f6f7f9;--c:#fff;--t:#14171c;--m:#6b7280;--b:#e5e7eb;--g:#16a34a;--r:#dc2626}
+@media(prefers-color-scheme:dark){:root{--bg:#0e1116;--c:#161b22;--t:#e6e8eb;--m:#8b94a1;--b:#262d36}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--t);font:15px system-ui,sans-serif}
+main{max-width:760px;margin:0 auto;padding:20px}h1{font-size:20px;margin:0}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.sp{justify-content:space-between}
+input,button{font:inherit;padding:9px 12px;border-radius:8px;border:1px solid var(--b);background:var(--c);color:var(--t)}
+input{flex:1;min-width:140px}button{cursor:pointer}button.p{background:var(--g);color:#fff;border-color:var(--g)}
+.card{background:var(--c);border:1px solid var(--b);border-radius:12px;padding:14px;margin-top:12px}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:8px;background:var(--m)}
+.up{background:var(--g)}.down{background:var(--r)}.m{color:var(--m);font-size:13px}
+.bars{display:flex;gap:2px;margin-top:10px;height:22px}.bars i{flex:1;border-radius:2px;background:var(--g)}.bars i.d{background:var(--r)}
+#login{max-width:320px;margin:20vh auto}
+</style></head><body><main>
+<div id="login" hidden><h1>🔒 Login</h1><p class="m">Private monitor</p><div class="row"><input id="pw" type="password" placeholder="Password"><button class="p" id="lb">Login</button></div><p id="le" class="m"></p></div>
+<div id="app" hidden>
+<div class="row sp"><h1>My Uptime</h1><div class="row"><button id="ck">Check now</button><button id="lo">Logout</button></div></div>
+<div class="card row"><input id="n" placeholder="Name"><input id="u" placeholder="https://mysite.onrender.com"><button class="p" id="add">Add</button></div>
+<div id="list"></div></div>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const api=(m,u,b)=>fetch(u,{method:m,headers:{'Content-Type':'application/json'},body:b?JSON.stringify(b):undefined});
+function show(a){$('#login').hidden=a;$('#app').hidden=!a}
+async function load(){const r=await api('GET','/api/sites');if(r.status===401)return show(false);show(true);render((await r.json()).sites)}
+function render(sites){
+  $('#list').innerHTML=sites.map(s=>{const h=s.hist||[],up=h.filter(x=>x.up).length,pct=h.length?(up/h.length*100).toFixed(1):'–',
+  avg=h.length?Math.round(h.reduce((a,x)=>a+x.ms,0)/h.length):'–',cls=s.paused?'':s.up===undefined?'':s.up?'up':'down';
+  return `<div class="card"><div class="row sp"><div><span class="dot ${cls}"></span><b>${esc(s.name)}</b> <span class="m">${s.paused?'paused':s.up===undefined?'pending':s.up?'Up':'Down'}</span><div class="m">${esc(s.url)}</div></div>
+  <div class="row"><button data-p="${s.id}" data-v="${!s.paused}">${s.paused?'Resume':'Pause'}</button><button data-d="${s.id}">Delete</button></div></div>
+  <div class="m" style="margin-top:8px">Uptime ${pct}% · Avg ${avg} ms · Last ${s.last?new Date(s.last).toLocaleString():'–'}</div>
+  <div class="bars">${h.slice(-50).map(x=>`<i class="${x.up?'':'d'}" title="${x.ms}ms"></i>`).join('')}</div></div>`}).join('')}
+$('#lb').onclick=async()=>{const r=await api('POST','/api/login',{password:$('#pw').value});if(r.ok)load();else $('#le').textContent=(await r.json()).error}
+$('#pw').onkeydown=e=>e.key==='Enter'&&$('#lb').click();
+$('#lo').onclick=async()=>{await api('DELETE','/api/login');show(false)};
+$('#add').onclick=async()=>{const r=await api('POST','/api/sites',{name:$('#n').value,url:$('#u').value});if(r.ok){$('#n').value=$('#u').value='';render((await r.json()).sites)}else alert((await r.json()).error)};
+$('#ck').onclick=async e=>{e.target.textContent='Checking…';const r=await api('POST','/api/sites',{action:'check'});e.target.textContent='Check now';if(r.ok)render((await r.json()).sites)};
+$('#list').onclick=async e=>{const d=e.target.dataset;let r;
+  if(d.d&&confirm('Delete?'))r=await api('DELETE','/api/sites',{id:d.d});else if(d.p)r=await api('PATCH','/api/sites',{id:d.p,paused:d.v==='true'});
+  if(r&&r.ok)render((await r.json()).sites)};
+load();setInterval(()=>!$('#app').hidden&&load(),60000);
+</script></main></body></html>
