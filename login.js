@@ -10,6 +10,6 @@ module.exports = async (req, res) => {
   await new Promise((r) => setTimeout(r, 400));
   if (!safeEq((req.body || {}).password || '', process.env.ADMIN_PASSWORD)) return res.status(401).json({ error: 'Wrong password' });
   await redis('DEL', k);
-  res.setHeader('Set-Cookie', `sess=${makeToken()}; Max-Age=${7 * 86400}` + secure);
+  res.setHeader('Set-Cookie', `sess=${makeToken()}` + secure);
   res.status(200).json({ ok: true });
 };
