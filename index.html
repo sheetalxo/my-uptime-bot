@@ -13,7 +13,7 @@ input{flex:1;min-width:140px}button{cursor:pointer}button.p{background:var(--g);
 .bars{display:flex;gap:2px;margin-top:10px;height:22px}.bars i{flex:1;border-radius:2px;background:var(--g)}.bars i.d{background:var(--r)}
 #login{max-width:320px;margin:20vh auto}
 </style></head><body><main>
-<div id="login" hidden><h1>🔒 Login</h1><p class="m">Private monitor</p><form id="lf" class="row"><input type="text" name="u" value="admin" autocomplete="username" hidden><input id="pw" type="password" name="p" placeholder="Password" autocomplete="current-password" required><button class="p" type="submit">Login</button></form><p id="le" class="m"></p></div>
+<div id="login" hidden><h1>🔒 Login</h1><p class="m">Private monitor</p><a href="/api/google" style="display:inline-block;padding:10px 16px;border-radius:8px;background:var(--g);color:#fff;text-decoration:none">Continue with Google</a><p id="le" class="m"></p></div>
 <div id="app" hidden>
 <div class="row sp"><h1>My Uptime</h1><div class="row"><button id="ck">Check now</button><button id="lo">Logout</button></div></div>
 <div class="card row"><input id="n" placeholder="Name"><input id="u" placeholder="https://mysite.onrender.com"><input id="iv" type="number" min="1" max="60" value="5" title="Ping every N minutes (1-60)" style="flex:none;width:80px"><span class="m">min</span><button class="p" id="add">Add</button></div>
@@ -31,7 +31,7 @@ function render(sites){
   <div class="row"><button data-p="${s.id}" data-v="${!s.paused}">${s.paused?'Resume':'Pause'}</button><button data-d="${s.id}">Delete</button></div></div>
   <div class="row m" style="margin-top:8px">Ping every <input type="number" min="1" max="60" value="${s.interval||5}" data-i="${s.id}" style="flex:none;min-width:0;width:64px;padding:4px 8px"> min · Uptime ${pct}% · Avg ${avg} ms · Last ${s.last?new Date(s.last).toLocaleTimeString():'–'}</div>
   <div class="bars">${h.slice(-50).map(x=>`<i class="${x.up?'':'d'}" title="${x.ms}ms"></i>`).join('')}</div></div>`}).join('')}
-$('#lf').onsubmit=async e=>{e.preventDefault();$('#le').textContent='';try{const r=await api('POST','/api/login',{password:$('#pw').value});if(r.ok){$('#pw').value='';load()}else{let m;try{m=(await r.json()).error}catch(x){}$('#le').textContent=m||'Server error '+r.status}}catch(x){$('#le').textContent='Network error'}};
+if(location.search.includes('err=denied'))$('#le').textContent='Ye Google account allowed nahi hai.';
 $('#lo').onclick=async()=>{await api('DELETE','/api/login');location.reload()};
 $('#list').onchange=async e=>{const i=e.target.dataset.i;if(!i)return;const r=await api('PATCH','/api/sites',{id:i,interval:e.target.value});if(r.ok)render((await r.json()).sites)};
 $('#add').onclick=async()=>{const r=await api('POST','/api/sites',{name:$('#n').value,url:$('#u').value,interval:$('#iv').value});if(r.ok){$('#n').value=$('#u').value='';render((await r.json()).sites)}else{let m;try{m=(await r.json()).error}catch(x){}alert(m||'Error '+r.status)}};
